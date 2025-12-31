@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: macos-15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Build Release
+      run: |
+        xcodebuild archive \
+          -scheme Arrstatus \
+          -configuration Release \
+          -archivePath "$RUNNER_TEMP/Arrstatus.xcarchive" \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          | xcpretty || true
+
+    - name: Export app from archive
+      run: |
+        # Copy app from archive
+        APP_PATH="$RUNNER_TEMP/Arrstatus.xcarchive/Products/Applications/Arrstatus.app"
+        if [ ! -d "$APP_PATH" ]; then
+          echo "Error: App not found at $APP_PATH"
+          exit 1
+        fi
+
+        # Create distribution directory
+        mkdir -p "$RUNNER_TEMP/dist"
+        cp -R "$APP_PATH" "$RUNNER_TEMP/dist/"
+
+        # Create ZIP
+        cd "$RUNNER_TEMP/dist"
+        zip -r "$RUNNER_TEMP/Arrstatus-${{ steps.version.outputs.VERSION }}.zip" Arrstatus.app
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat << EOF > $RUNNER_TEMP/release_notes.md
+        ## Arrstatus ${{ steps.version.outputs.VERSION }}
+
+        ### Installation
+
+        1. Download \`Arrstatus-${{ steps.version.outputs.VERSION }}.zip\`
+        2. Unzip the archive
+        3. Move \`Arrstatus.app\` to your Applications folder
+        4. First time: Right-click and select "Open" to bypass Gatekeeper
+
+        ### Notes
+
+        - This is an unsigned build for development/testing
+        - macOS will show a security warning on first launch
+        - Your settings and credentials are stored securely in macOS Keychain
+
+        ---
+
+        🤖 Built with GitHub Actions
+        EOF
+
+        echo "NOTES_FILE=$RUNNER_TEMP/release_notes.md" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ runner.temp }}/Arrstatus-${{ steps.version.outputs.VERSION }}.zip
+        body_path: ${{ steps.release_notes.outputs.NOTES_FILE }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Release Summary
+      run: |
+        echo "✅ Release ${{ steps.version.outputs.VERSION }} created successfully"
+        echo "📦 Artifact: Arrstatus-${{ steps.version.outputs.VERSION }}.zip"

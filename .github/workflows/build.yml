@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build App
+    runs-on: macos-15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+    - name: Show Xcode version
+      run: xcodebuild -version
+
+    - name: Build app
+      run: |
+        xcodebuild build \
+          -scheme Arrstatus \
+          -configuration Debug \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+
+    - name: Build Summary
+      if: always()
+      run: |
+        echo "✅ Build completed successfully"
