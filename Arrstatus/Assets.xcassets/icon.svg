@@ -1,0 +1,26 @@
+<svg
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Background -->
+  <rect
+    x="64"
+    y="64"
+    width="896"
+    height="896"
+    rx="200"
+    fill="#1e1e1e"
+  />
+
+  <!-- Service rows -->
+  <rect x="220" y="320" width="420" height="80" rx="40" fill="#e0e0e0"/>
+  <rect x="220" y="472" width="420" height="80" rx="40" fill="#e0e0e0"/>
+  <rect x="220" y="624" width="420" height="80" rx="40" fill="#e0e0e0"/>
+
+  <!-- Status indicators -->
+  <circle cx="720" cy="360" r="28" fill="#4ade80"/>
+  <circle cx="720" cy="512" r="28" fill="#4ade80"/>
+  <circle cx="720" cy="664" r="28" fill="#4ade80"/>
+</svg>

@@ -4,16 +4,21 @@ A lightweight macOS menubar application that monitors download clients (qBittorr
 
 ## Features
 
-- **Real-time Monitoring**: Polls all configured services every 5 seconds
+- **Real-time Monitoring**: Polls all configured services with customizable interval (5-60 seconds)
 - **Native macOS Integration**: Uses native MenuBar dropdown with system-styled sections
+- **User Preferences Window**: Native macOS 15+ Settings window for configuration
+- **Secure Credential Storage**: Passwords and API keys stored in macOS Keychain
+- **Per-Service Controls**: Enable/disable services individually with toggles
+- **Connection Testing**: Test credentials before saving
 - **Download Client Support**:
   - **qBittorrent**: Shows download/upload speeds with active torrent counts
   - **SABnzbd**: Displays download speed with active download counts
 - ***arr Service Support**:
   - **Radarr**: Lists active movie downloads with progress, ETA, and status
   - **Sonarr**: Lists active TV episode downloads with series/episode info
-- **Web UI Integration**: Click any item to open directly in your browser
+- **Web UI Integration**: Click any item to open directly in your browser (supports custom URLs)
 - **Error Handling**: Gracefully handles service failures without crashing
+- **Comprehensive Testing**: 56 unit tests covering all components
 
 ## Requirements
 
@@ -27,7 +32,18 @@ A lightweight macOS menubar application that monitors download clients (qBittorr
 
 ## Installation
 
-### From Source
+### Option 1: Download Release (Unsigned)
+
+1. Download `Arrstatus-v*.zip` from [Releases](https://github.com/michalgritzbach/Arrstatus/releases)
+2. Unzip the archive
+3. **Remove quarantine attribute** (required for unsigned apps):
+   ```bash
+   xattr -cr Arrstatus.app
+   ```
+4. Move `Arrstatus.app` to `/Applications`
+5. Right-click → "Open" to launch first time
+
+### Option 2: Build from Source
 
 1. Clone the repository:
 ```bash
@@ -40,9 +56,7 @@ cd arrstatus
 open Arrstatus.xcodeproj
 ```
 
-3. Configure your services (see Configuration section below)
-
-4. Build and run:
+3. Build and run:
 ```bash
 xcodebuild -scheme Arrstatus -project Arrstatus.xcodeproj build
 ```
@@ -51,46 +65,58 @@ Or press `Cmd+R` in Xcode to build and run.
 
 ## Configuration
 
-Edit `Arrstatus/Configuration/AppConfiguration.swift` with your service details:
+### First Launch
 
-```swift
-enum AppConfiguration {
-    enum PollingInterval {
-        static let seconds: TimeInterval = 5.0
-    }
+On first launch, Arrstatus will show an onboarding screen:
 
-    enum QBittorrent {
-        static let baseURL = "http://your-server:8080"
-        static let username = "admin"
-        static let password = "your-password"
-        static let webUIURL = "http://your-server:8080"
-    }
+1. Click **"Configure Services"** to open Preferences
+2. Enable the services you want to monitor
+3. Enter credentials for each enabled service
+4. Test each connection before saving
+5. (Optional) Adjust polling interval (default: 5 seconds)
 
-    enum SABnzbd {
-        static let baseURL = "http://your-server:8080"
-        static let apiKey = "your-api-key-here"
-        static let webUIURL = "http://your-server:8080"
-    }
+### Preferences Window
 
-    enum Radarr {
-        static let baseURL = "http://your-server:7878"
-        static let apiKey = "your-api-key-here"
-        static let webUIURL = "http://your-server:7878"
-    }
+Access Preferences anytime:
+- Click the menubar icon → **"Preferences..."**
+- Or press `Cmd+,`
 
-    enum Sonarr {
-        static let baseURL = "http://your-server:8989"
-        static let apiKey = "your-api-key-here"
-        static let webUIURL = "http://your-server:8989"
-    }
-}
-```
+#### Service Configuration
 
-### Finding API Keys
+For each service, configure:
 
-- **qBittorrent**: Username and password from Web UI settings
-- **SABnzbd**: Config → General → API Key
-- **Radarr/Sonarr**: Settings → General → Security → API Key
+**qBittorrent:**
+- Base URL: `https://your-server:8080`
+- Username: Your qBittorrent username
+- Password: Your qBittorrent password (stored in Keychain)
+- Web UI URL: (Optional) Different URL for opening in browser
+
+**SABnzbd:**
+- Base URL: `https://your-server:8081`
+- API Key: Found in SABnzbd Config → General → API Key (stored in Keychain)
+- Web UI URL: (Optional) Different URL for opening in browser
+
+**Radarr:**
+- Base URL: `https://your-server:7878`
+- API Key: Found in Radarr Settings → General → Security (stored in Keychain)
+- Web UI URL: (Optional) Different URL for opening in browser
+
+**Sonarr:**
+- Base URL: `https://your-server:8989`
+- API Key: Found in Sonarr Settings → General → Security (stored in Keychain)
+- Web UI URL: (Optional) Different URL for opening in browser
+
+#### Security
+
+- **Passwords and API keys** are stored securely in macOS Keychain
+- **Non-sensitive settings** (URLs, enabled state) are stored in UserDefaults
+- Credentials never leave your Mac
+
+#### Web UI URL
+
+Leave **Web UI URL** empty to use Base URL when clicking on items. Only set it if:
+- You access services through a reverse proxy with different URL
+- Your Web UI is on a different port/domain than the API
 
 ## Architecture
 
@@ -114,21 +140,30 @@ enum AppConfiguration {
 ```
 Arrstatus/
 ├── ArrstatusApp.swift              # Entry point with MenuBarExtra
-├── Configuration/
-│   └── AppConfiguration.swift      # Service configuration
 ├── Models/
+│   ├── Settings/                   # Configuration models
+│   │   └── ServiceConfiguration.swift
 │   ├── DownloadClient/            # qBittorrent & SABnzbd models
 │   ├── ArrService/                # Radarr & Sonarr models
 │   └── AggregatedStatus.swift     # Combined status
 ├── Services/
 │   ├── DownloadClients/           # Download client API clients
 │   ├── ArrServices/               # *arr service API clients
-│   └── StatusAggregator.swift     # Orchestrator
+│   ├── StatusAggregator.swift     # Orchestrator with dynamic clients
+│   └── SettingsManager.swift      # Settings coordination (@Observable)
+├── Utilities/
+│   ├── KeychainManager.swift      # Secure credential storage
+│   └── FormatHelpers.swift        # Formatting utilities
 ├── Views/
+│   ├── Settings/                  # Preferences window
+│   │   ├── SettingsView.swift
+│   │   ├── ServiceConfigurationRow.swift
+│   │   └── QBittorrentConfigurationRow.swift
 │   ├── MenuBarContentView.swift   # Native menu dropdown
-│   └── MenuBarLabel.swift         # Menubar icon/text
-└── Utilities/
-    └── FormatHelpers.swift        # Formatting utilities
+│   ├── MenuBarLabel.swift         # Menubar icon/text
+│   └── OnboardingView.swift       # First launch screen
+└── Tests/
+    └── ArrstatusTests/            # 56 unit tests
 ```
 
 ### Building
@@ -172,23 +207,54 @@ xcodebuild test -scheme Arrstatus -project Arrstatus.xcodeproj -only-testing:Arr
 
 ## Troubleshooting
 
+### "Application is damaged"
+
+This happens with unsigned apps downloaded from the internet. macOS adds a "quarantine" flag that blocks unsigned apps.
+
+**Fix:**
+
+```bash
+# Navigate to where you unzipped the app
+cd ~/Downloads  # or wherever your app is
+
+# Remove quarantine attribute
+xattr -cr Arrstatus.app
+
+# Launch the app
+open Arrstatus.app
+```
+
+**Why?** This is an unsigned build (no Apple Developer ID signature). macOS Gatekeeper blocks unsigned apps with quarantine attributes. The `xattr -cr` command removes this flag.
+
+### Security Warning on First Launch
+
+Even after removing quarantine, macOS will show a warning on first launch:
+
+1. Right-click (or Control+click) on `Arrstatus.app`
+2. Select **"Open"** from the menu
+3. Click **"Open"** in the security dialog
+4. After first launch, you can open normally
+
 ### Connection Issues
 
 - Verify your services are accessible from your Mac
 - Check firewall settings
 - Ensure API keys are correct
 - Test URLs in a browser first
+- Use HTTPS URLs when possible
 
 ### Authentication Failures
 
 - **qBittorrent**: Check username/password in Web UI settings
 - **SABnzbd/Radarr/Sonarr**: Verify API key hasn't been regenerated
+- Use **"Test Connection"** button in Preferences to verify
 
 ### No Data Showing
 
 - Check Console.app for error logs (filter for "Arrstatus")
 - Verify services have active downloads/items in queue
 - Ensure polling interval isn't too long (default: 5 seconds)
+- Check that services are enabled in Preferences
 
 ## Contributing
 
