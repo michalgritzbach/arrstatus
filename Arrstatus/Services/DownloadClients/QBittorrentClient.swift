@@ -12,7 +12,8 @@ class QBittorrentClient {
     private let baseURL: String
     private let username: String
     private let password: String
-    private var sessionCookie: HTTPCookie?
+    private var isAuthenticated = false
+    private let cookieStorage: HTTPCookieStorage
 
     private let session: URLSession
 
@@ -21,10 +22,15 @@ class QBittorrentClient {
         self.username = username
         self.password = password
 
-        let config = URLSessionConfiguration.default
+        // Use ephemeral configuration with automatic cookie handling
+        let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.httpCookieAcceptPolicy = .always
+        config.httpShouldSetCookies = true
+
         self.session = URLSession(configuration: config)
+        self.cookieStorage = config.httpCookieStorage ?? HTTPCookieStorage.shared
     }
 
     // MARK: - Authentication
@@ -62,6 +68,8 @@ class QBittorrentClient {
     }
 
     func login() async throws {
+        print("🔐 qBittorrent: Attempting authentication to \(baseURL)")
+
         guard let url = URL(string: "\(baseURL)/api/v2/auth/login") else {
             throw QBError.invalidURL
         }
@@ -89,13 +97,16 @@ class QBittorrentClient {
             throw QBError.authenticationFailed
         }
 
-        // Extract cookie from response
-        if let fields = httpResponse.allHeaderFields as? [String: String] {
-            let cookies = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url)
-            sessionCookie = cookies.first { $0.name == "SID" }
-        }
-
-        if sessionCookie == nil {
+        // Verify cookie was stored automatically by URLSession
+        // Check all cookies in storage for the SID cookie
+        if let allCookies = cookieStorage.cookies,
+           allCookies.contains(where: { $0.name == "SID" }) {
+            isAuthenticated = true
+            print("✅ qBittorrent authenticated successfully, SID cookie received")
+        } else {
+            // Log available cookies for debugging
+            let cookieNames = cookieStorage.cookies?.map { $0.name }.joined(separator: ", ") ?? "none"
+            print("⚠️ qBittorrent: No SID cookie found. Available cookies: \(cookieNames)")
             throw QBError.noCookieReceived
         }
     }
@@ -129,7 +140,7 @@ class QBittorrentClient {
 
     private func makeAuthenticatedRequest(path: String, retryCount: Int = 0) async throws -> Data {
         // Ensure we're logged in
-        if sessionCookie == nil {
+        if !isAuthenticated {
             try await login()
         }
 
@@ -137,12 +148,8 @@ class QBittorrentClient {
             throw QBError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-
-        // Add cookie to request
-        if let cookie = sessionCookie {
-            request.setValue("\(cookie.name)=\(cookie.value)", forHTTPHeaderField: "Cookie")
-        }
+        let request = URLRequest(url: url)
+        // Cookies are now automatically handled by URLSession
 
         let (data, response) = try await session.data(for: request)
 
@@ -150,11 +157,17 @@ class QBittorrentClient {
             throw QBError.invalidResponse
         }
 
-        // Handle authentication failure - retry once with new login
-        if httpResponse.statusCode == 403 && retryCount == 0 {
-            sessionCookie = nil
+        // Handle authentication failure - retry with exponential backoff
+        if httpResponse.statusCode == 403 && retryCount < 3 {
+            print("⚠️ qBittorrent: Authentication expired, retrying... (attempt \(retryCount + 1))")
+            isAuthenticated = false
+
+            // Exponential backoff: 1s, 2s, 4s
+            let delay = TimeInterval(1 << retryCount)
+            try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+
             try await login()
-            return try await makeAuthenticatedRequest(path: path, retryCount: 1)
+            return try await makeAuthenticatedRequest(path: path, retryCount: retryCount + 1)
         }
 
         guard httpResponse.statusCode == 200 else {

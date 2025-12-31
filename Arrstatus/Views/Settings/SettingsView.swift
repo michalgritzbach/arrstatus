@@ -20,12 +20,6 @@ struct SettingsView: View {
     init() {
         let manager = SettingsManager.shared
         _settings = State(initialValue: manager.settings)
-
-        // Load credentials from keychain
-        _qbPassword = State(initialValue: manager.getQBittorrentPassword() ?? "")
-        _sabAPIKey = State(initialValue: manager.getSABnzbdAPIKey() ?? "")
-        _radarrAPIKey = State(initialValue: manager.getRadarrAPIKey() ?? "")
-        _sonarrAPIKey = State(initialValue: manager.getSonarrAPIKey() ?? "")
     }
 
     var body: some View {
@@ -95,6 +89,13 @@ struct SettingsView: View {
                     saveSettings()
                 }
             }
+        }
+        .task {
+            // Load credentials from keychain asynchronously
+            qbPassword = await settingsManager.getQBittorrentPassword() ?? ""
+            sabAPIKey = await settingsManager.getSABnzbdAPIKey() ?? ""
+            radarrAPIKey = await settingsManager.getRadarrAPIKey() ?? ""
+            sonarrAPIKey = await settingsManager.getSonarrAPIKey() ?? ""
         }
     }
 

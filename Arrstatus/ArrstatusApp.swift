@@ -30,10 +30,15 @@ struct ArrstatusApp: App {
                 .sheet(isPresented: $showOnboarding) {
                     OnboardingView(isPresented: $showOnboarding)
                 }
+                .task {
+                    // Migrate credentials to remove Touch ID requirement (one-time)
+                    await KeychainManager.shared.migrateCredentialsToNoTouchID()
+                }
         } label: {
             MenuBarLabel(
                 totalDownloads: statusAggregator.totalActiveDownloads,
-                aggregatedSpeed: statusAggregator.totalDownloadSpeed
+                aggregatedSpeed: statusAggregator.totalDownloadSpeed,
+                hasServicesEnabled: settingsManager.hasAnyServiceConfigured
             )
         }
 

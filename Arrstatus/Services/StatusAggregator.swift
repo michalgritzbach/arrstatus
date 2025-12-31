@@ -73,7 +73,7 @@ class StatusAggregator {
         // QBittorrent
         if settings.qbittorrent.isEnabled,
            !settings.qbittorrent.baseURL.isEmpty,
-           let password = settingsManager.getQBittorrentPassword(),
+           let password = await settingsManager.getQBittorrentPassword(),
            !password.isEmpty {
             qbClient = QBittorrentClient(
                 baseURL: settings.qbittorrent.baseURL,
@@ -89,7 +89,7 @@ class StatusAggregator {
         // SABnzbd
         if settings.sabnzbd.isEnabled,
            !settings.sabnzbd.baseURL.isEmpty,
-           let apiKey = settingsManager.getSABnzbdAPIKey(),
+           let apiKey = await settingsManager.getSABnzbdAPIKey(),
            !apiKey.isEmpty {
             sabClient = SABnzbdClient(
                 baseURL: settings.sabnzbd.baseURL,
@@ -104,7 +104,7 @@ class StatusAggregator {
         // Radarr
         if settings.radarr.isEnabled,
            !settings.radarr.baseURL.isEmpty,
-           let apiKey = settingsManager.getRadarrAPIKey(),
+           let apiKey = await settingsManager.getRadarrAPIKey(),
            !apiKey.isEmpty {
             radarrClient = RadarrClient(
                 baseURL: settings.radarr.baseURL,
@@ -119,7 +119,7 @@ class StatusAggregator {
         // Sonarr
         if settings.sonarr.isEnabled,
            !settings.sonarr.baseURL.isEmpty,
-           let apiKey = settingsManager.getSonarrAPIKey(),
+           let apiKey = await settingsManager.getSonarrAPIKey(),
            !apiKey.isEmpty {
             sonarrClient = SonarrClient(
                 baseURL: settings.sonarr.baseURL,

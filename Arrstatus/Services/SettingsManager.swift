@@ -90,32 +90,32 @@ class SettingsManager {
         try keychain.save(password, for: "qbittorrent.password")
     }
 
-    func getQBittorrentPassword() -> String? {
-        try? keychain.retrieve("qbittorrent.password")
+    func getQBittorrentPassword() async -> String? {
+        try? await keychain.retrieve("qbittorrent.password")
     }
 
     func saveSABnzbdAPIKey(_ apiKey: String) throws {
         try keychain.save(apiKey, for: "sabnzbd.apikey")
     }
 
-    func getSABnzbdAPIKey() -> String? {
-        try? keychain.retrieve("sabnzbd.apikey")
+    func getSABnzbdAPIKey() async -> String? {
+        try? await keychain.retrieve("sabnzbd.apikey")
     }
 
     func saveRadarrAPIKey(_ apiKey: String) throws {
         try keychain.save(apiKey, for: "radarr.apikey")
     }
 
-    func getRadarrAPIKey() -> String? {
-        try? keychain.retrieve("radarr.apikey")
+    func getRadarrAPIKey() async -> String? {
+        try? await keychain.retrieve("radarr.apikey")
     }
 
     func saveSonarrAPIKey(_ apiKey: String) throws {
         try keychain.save(apiKey, for: "sonarr.apikey")
     }
 
-    func getSonarrAPIKey() -> String? {
-        try? keychain.retrieve("sonarr.apikey")
+    func getSonarrAPIKey() async -> String? {
+        try? await keychain.retrieve("sonarr.apikey")
     }
 
     // MARK: - First Launch
