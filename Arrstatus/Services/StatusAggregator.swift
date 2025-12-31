@@ -6,21 +6,28 @@
 //
 
 import Foundation
+import Combine
 
 @Observable
 class StatusAggregator {
-    // Client instances
-    private let qbClient: QBittorrentClient
-    private let sabClient: SABnzbdClient
-    private let radarrClient: RadarrClient
-    private let sonarrClient: SonarrClient
+    // Optional client instances (dynamically created)
+    private var qbClient: QBittorrentClient?
+    private var sabClient: SABnzbdClient?
+    private var radarrClient: RadarrClient?
+    private var sonarrClient: SonarrClient?
+
+    // Settings manager
+    private let settingsManager: SettingsManager
 
     // Current aggregated state
     private(set) var status = AggregatedStatus()
 
     // Polling control
     private var pollingTimer: Timer?
-    private let pollingInterval: TimeInterval
+    private var pollingInterval: TimeInterval
+
+    // Combine subscriptions
+    private var cancellables = Set<AnyCancellable>()
 
     // Computed properties for menubar
     var totalActiveDownloads: Int {
@@ -31,37 +38,112 @@ class StatusAggregator {
         status.totalDownloadSpeed
     }
 
-    init() {
-        // Initialize all clients with configuration
-        self.qbClient = QBittorrentClient(
-            baseURL: AppConfiguration.QBittorrent.baseURL,
-            username: AppConfiguration.QBittorrent.username,
-            password: AppConfiguration.QBittorrent.password
-        )
+    init(settingsManager: SettingsManager = .shared) {
+        self.settingsManager = settingsManager
+        self.pollingInterval = settingsManager.settings.pollingInterval
 
-        self.sabClient = SABnzbdClient(
-            baseURL: AppConfiguration.SABnzbd.baseURL,
-            apiKey: AppConfiguration.SABnzbd.apiKey
-        )
+        // Subscribe to configuration changes
+        settingsManager.configurationDidChange
+            .sink { [weak self] in
+                Task { @MainActor in
+                    await self?.reconfigure()
+                }
+            }
+            .store(in: &cancellables)
 
-        self.radarrClient = RadarrClient(
-            baseURL: AppConfiguration.Radarr.baseURL,
-            apiKey: AppConfiguration.Radarr.apiKey
-        )
-
-        self.sonarrClient = SonarrClient(
-            baseURL: AppConfiguration.Sonarr.baseURL,
-            apiKey: AppConfiguration.Sonarr.apiKey
-        )
-
-        self.pollingInterval = AppConfiguration.PollingInterval.seconds
-
-        // Start polling
-        startPolling()
+        // Initial configuration
+        Task { @MainActor in
+            await reconfigure()
+        }
     }
 
     deinit {
         stopPolling()
+    }
+
+    // MARK: - Configuration
+
+    @MainActor
+    private func reconfigure() async {
+        stopPolling()
+
+        // Recreate clients based on current settings
+        let settings = settingsManager.settings
+
+        // QBittorrent
+        if settings.qbittorrent.isEnabled,
+           !settings.qbittorrent.baseURL.isEmpty,
+           let password = settingsManager.getQBittorrentPassword(),
+           !password.isEmpty {
+            qbClient = QBittorrentClient(
+                baseURL: settings.qbittorrent.baseURL,
+                username: settings.qbittorrent.username,
+                password: password
+            )
+            print("✅ QBittorrent client configured")
+        } else {
+            qbClient = nil
+            print("⚠️ QBittorrent client disabled")
+        }
+
+        // SABnzbd
+        if settings.sabnzbd.isEnabled,
+           !settings.sabnzbd.baseURL.isEmpty,
+           let apiKey = settingsManager.getSABnzbdAPIKey(),
+           !apiKey.isEmpty {
+            sabClient = SABnzbdClient(
+                baseURL: settings.sabnzbd.baseURL,
+                apiKey: apiKey
+            )
+            print("✅ SABnzbd client configured")
+        } else {
+            sabClient = nil
+            print("⚠️ SABnzbd client disabled")
+        }
+
+        // Radarr
+        if settings.radarr.isEnabled,
+           !settings.radarr.baseURL.isEmpty,
+           let apiKey = settingsManager.getRadarrAPIKey(),
+           !apiKey.isEmpty {
+            radarrClient = RadarrClient(
+                baseURL: settings.radarr.baseURL,
+                apiKey: apiKey
+            )
+            print("✅ Radarr client configured")
+        } else {
+            radarrClient = nil
+            print("⚠️ Radarr client disabled")
+        }
+
+        // Sonarr
+        if settings.sonarr.isEnabled,
+           !settings.sonarr.baseURL.isEmpty,
+           let apiKey = settingsManager.getSonarrAPIKey(),
+           !apiKey.isEmpty {
+            sonarrClient = SonarrClient(
+                baseURL: settings.sonarr.baseURL,
+                apiKey: apiKey
+            )
+            print("✅ Sonarr client configured")
+        } else {
+            sonarrClient = nil
+            print("⚠️ Sonarr client disabled")
+        }
+
+        // Update polling interval
+        pollingInterval = settings.pollingInterval
+
+        // Start polling if any service is enabled
+        if hasAnyEnabledService {
+            startPolling()
+        } else {
+            print("⚠️ No services enabled - polling not started")
+        }
+    }
+
+    private var hasAnyEnabledService: Bool {
+        qbClient != nil || sabClient != nil || radarrClient != nil || sonarrClient != nil
     }
 
     // MARK: - Polling Control
@@ -92,7 +174,7 @@ class StatusAggregator {
 
     @MainActor
     private func refreshAllData() async {
-        // Fetch from all clients in parallel
+        // Fetch from all enabled clients in parallel
         async let qbStatus = fetchQBittorrentStatus()
         async let sabStatus = fetchSABnzbdStatus()
         async let radarrItems = fetchRadarrQueue()
@@ -114,8 +196,12 @@ class StatusAggregator {
     }
 
     private func fetchQBittorrentStatus() async -> Result<QBClientStatus, Error> {
+        guard let client = qbClient else {
+            return .failure(ServiceError.disabled)
+        }
+
         do {
-            let status = try await qbClient.fetchStatus()
+            let status = try await client.fetchStatus()
             print("✅ qBittorrent: DL \(FormatHelpers.formatSpeed(status.transferInfo.dlInfoSpeed)), \(status.activeTorrents.count) active")
             return .success(status)
         } catch {
@@ -125,8 +211,12 @@ class StatusAggregator {
     }
 
     private func fetchSABnzbdStatus() async -> Result<SABClientStatus, Error> {
+        guard let client = sabClient else {
+            return .failure(ServiceError.disabled)
+        }
+
         do {
-            let status = try await sabClient.fetchStatus()
+            let status = try await client.fetchStatus()
             print("✅ SABnzbd: DL \(FormatHelpers.formatSpeed(status.queue.speedBytesInt)), \(status.queue.slots.count) items")
             return .success(status)
         } catch {
@@ -136,8 +226,12 @@ class StatusAggregator {
     }
 
     private func fetchRadarrQueue() async -> Result<[RadarrQueueItem], Error> {
+        guard let client = radarrClient else {
+            return .failure(ServiceError.disabled)
+        }
+
         do {
-            let items = try await radarrClient.getActiveItems()
+            let items = try await client.getActiveItems()
             print("✅ Radarr: \(items.count) active items")
             return .success(items)
         } catch {
@@ -147,13 +241,33 @@ class StatusAggregator {
     }
 
     private func fetchSonarrQueue() async -> Result<[SonarrQueueItem], Error> {
+        guard let client = sonarrClient else {
+            return .failure(ServiceError.disabled)
+        }
+
         do {
-            let items = try await sonarrClient.getActiveItems()
+            let items = try await client.getActiveItems()
             print("✅ Sonarr: \(items.count) active items")
             return .success(items)
         } catch {
             print("❌ Sonarr fetch error: \(error.localizedDescription)")
             return .failure(error)
+        }
+    }
+}
+
+// MARK: - Service Error
+
+enum ServiceError: LocalizedError {
+    case disabled
+    case notConfigured
+
+    var errorDescription: String? {
+        switch self {
+        case .disabled:
+            return "Service is disabled"
+        case .notConfigured:
+            return "Service is not configured"
         }
     }
 }

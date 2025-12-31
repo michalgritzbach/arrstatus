@@ -9,6 +9,8 @@ import SwiftUI
 
 struct MenuBarContentView: View {
     @Environment(StatusAggregator.self) private var aggregator
+    @Environment(\.openSettings) private var openSettings
+    @State private var settingsManager = SettingsManager.shared
 
     var body: some View {
         // Download Clients Section
@@ -18,7 +20,10 @@ struct MenuBarContentView: View {
 
             Section("qBittorrent") {
                 Button {
-                    openURL(AppConfiguration.QBittorrent.webUIURL)
+                    let url = settingsManager.settings.qbittorrent.webUIURL.isEmpty
+                        ? settingsManager.settings.qbittorrent.baseURL
+                        : settingsManager.settings.qbittorrent.webUIURL
+                    openURL(url)
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
                         .symbolRenderingMode(.palette)
@@ -28,7 +33,10 @@ struct MenuBarContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 Button {
-                    openURL(AppConfiguration.QBittorrent.webUIURL)
+                    let url = settingsManager.settings.qbittorrent.webUIURL.isEmpty
+                        ? settingsManager.settings.qbittorrent.baseURL
+                        : settingsManager.settings.qbittorrent.webUIURL
+                    openURL(url)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .symbolRenderingMode(.palette)
@@ -45,7 +53,10 @@ struct MenuBarContentView: View {
 
             Section("SABnzbd") {
                 Button {
-                    openURL(AppConfiguration.SABnzbd.webUIURL)
+                    let url = settingsManager.settings.sabnzbd.webUIURL.isEmpty
+                        ? settingsManager.settings.sabnzbd.baseURL
+                        : settingsManager.settings.sabnzbd.webUIURL
+                    openURL(url)
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
                         .symbolRenderingMode(.palette)
@@ -67,7 +78,10 @@ struct MenuBarContentView: View {
             } else {
                 ForEach(aggregator.status.radarr) { item in
                     Button {
-                        openURL("\(AppConfiguration.Radarr.webUIURL)/movie/\(item.movie?.tmdbId ?? item.movieId)")
+                        let baseURL = settingsManager.settings.radarr.webUIURL.isEmpty
+                            ? settingsManager.settings.radarr.baseURL
+                            : settingsManager.settings.radarr.webUIURL
+                        openURL("\(baseURL)/movie/\(item.movie?.tmdbId ?? item.movieId)")
                     } label: {
                         Text(item.displayTitle)
                         Text(item.displayStatus)
@@ -87,7 +101,10 @@ struct MenuBarContentView: View {
             } else {
                 ForEach(aggregator.status.sonarr) { item in
                     Button {
-                        openURL("\(AppConfiguration.Sonarr.webUIURL)/series/\(item.series?.id ?? item.seriesId)")
+                        let baseURL = settingsManager.settings.sonarr.webUIURL.isEmpty
+                            ? settingsManager.settings.sonarr.baseURL
+                            : settingsManager.settings.sonarr.webUIURL
+                        openURL("\(baseURL)/series/\(item.series?.id ?? item.seriesId)")
                     } label: {
                         Text(item.displayTitle)
                         Text(item.displayStatus)
@@ -98,6 +115,11 @@ struct MenuBarContentView: View {
         }
 
         Divider()
+
+        Button("Preferences...") {
+            openSettings()
+        }
+        .keyboardShortcut(",", modifiers: .command)
 
         Button("Quit") {
             NSApplication.shared.terminate(nil)

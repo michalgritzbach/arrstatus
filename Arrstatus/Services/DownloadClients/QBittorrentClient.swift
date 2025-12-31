@@ -29,6 +29,38 @@ class QBittorrentClient {
 
     // MARK: - Authentication
 
+    func testConnection() async throws {
+        // Simpler test that just validates credentials without storing cookie
+        guard let url = URL(string: "\(baseURL)/api/v2/auth/login") else {
+            throw QBError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyString = "username=\(username)&password=\(password)"
+        request.httpBody = bodyString.data(using: .utf8)
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw QBError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw QBError.authenticationFailed
+        }
+
+        // Check response body
+        if let responseString = String(data: data, encoding: .utf8),
+           responseString.contains("Fails") {
+            throw QBError.authenticationFailed
+        }
+
+        // Authentication succeeded - that's all we need for testing
+    }
+
     func login() async throws {
         guard let url = URL(string: "\(baseURL)/api/v2/auth/login") else {
             throw QBError.invalidURL
