@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Script to bump version and create git tag
+# Usage: ./bump-version.sh [major|minor|patch] [--push]
+
+set -e
+
+BUMP_TYPE="$1"
+PUSH_FLAG="$2"
+PROJECT_FILE="Arrstatus.xcodeproj/project.pbxproj"
+
+# Validate argument
+if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
+    echo "Usage: $0 [major|minor|patch] [--push]"
+    echo ""
+    echo "Examples:"
+    echo "  $0 major        # 1.2.3 -> 2.0.0"
+    echo "  $0 minor        # 1.2.3 -> 1.3.0"
+    echo "  $0 patch        # 1.2.3 -> 1.2.4"
+    echo "  $0 patch --push # Bump and push to remote"
+    exit 1
+fi
+
+# Check if working directory is clean
+if [[ -n $(git status --porcelain) ]]; then
+    echo "Error: Working directory is not clean. Commit or stash changes first."
+    exit 1
+fi
+
+# Extract current version from project file
+CURRENT_VERSION=$(grep -m 1 "MARKETING_VERSION = " "$PROJECT_FILE" | sed 's/.*MARKETING_VERSION = \(.*\);/\1/')
+
+echo "Current version: $CURRENT_VERSION"
+
+# Split version into components
+IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+MAJOR="${VERSION_PARTS[0]}"
+MINOR="${VERSION_PARTS[1]}"
+PATCH="${VERSION_PARTS[2]}"
+
+# Bump the appropriate version component
+case "$BUMP_TYPE" in
+    major)
+        MAJOR=$((MAJOR + 1))
+        MINOR=0
+        PATCH=0
+        ;;
+    minor)
+        MINOR=$((MINOR + 1))
+        PATCH=0
+        ;;
+    patch)
+        PATCH=$((PATCH + 1))
+        ;;
+esac
+
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+echo "New version: $NEW_VERSION"
+
+# Update all occurrences of MARKETING_VERSION in project file
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    sed -i '' "s/MARKETING_VERSION = ${CURRENT_VERSION};/MARKETING_VERSION = ${NEW_VERSION};/g" "$PROJECT_FILE"
+else
+    # Linux
+    sed -i "s/MARKETING_VERSION = ${CURRENT_VERSION};/MARKETING_VERSION = ${NEW_VERSION};/g" "$PROJECT_FILE"
+fi
+
+echo "Updated $PROJECT_FILE"
+
+# Commit the version bump
+git add "$PROJECT_FILE"
+git commit -m "Bump version to ${NEW_VERSION}"
+
+# Create git tag
+TAG_NAME="v${NEW_VERSION}"
+git tag -a "$TAG_NAME" -m "Version ${NEW_VERSION}"
+
+echo ""
+echo "✅ Version bumped to ${NEW_VERSION}"
+echo "✅ Created tag: ${TAG_NAME}"
+echo "✅ Committed changes"
+
+# Push to remote if --push flag is provided
+if [[ "$PUSH_FLAG" == "--push" ]]; then
+    echo ""
+    echo "Pushing to remote..."
+    git push
+    git push origin "$TAG_NAME"
+    echo "✅ Pushed changes and tag to remote"
+else
+    echo ""
+    echo "To push changes and tag to remote, run:"
+    echo "  git push && git push origin ${TAG_NAME}"
+    echo ""
+    echo "Or run this script with --push flag:"
+    echo "  $0 $BUMP_TYPE --push"
+fi
