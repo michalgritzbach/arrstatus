@@ -4,11 +4,11 @@ Mock server for arrstatus demo/screenshots.
 Runs fake API endpoints for all five services on their standard ports.
 
 Ports:
-  8080 — qBittorrent
-  8081 — SABnzbd
-  7878 — Radarr
-  8989 — Sonarr
-  8686 — Lidarr
+  19080 — qBittorrent
+  19081 — SABnzbd
+  19878 — Radarr
+  19989 — Sonarr
+  19686 — Lidarr
 """
 
 import json
@@ -19,8 +19,8 @@ from urllib.parse import urlparse
 # ── Mock data ─────────────────────────────────────────────────────────────────
 
 QB_TRANSFER_INFO = {
-    "dl_info_speed": 3_355_443,   # ~3.2 MB/s
-    "up_info_speed":   524_288,   # ~512 KB/s
+    "dl_info_speed": 7_549_747,   # ~7.2 MB/s
+    "up_info_speed":   786_432,   # ~768 KB/s
     "dl_info_data": 107_374_182_400,
     "up_info_data":  21_474_836_480,
     "connection_status": "connected",
@@ -29,62 +29,94 @@ QB_TRANSFER_INFO = {
 QB_TORRENTS = [
     {
         "hash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-        "name": "The.Expanse.S06E01.2160p.BluRay.x265-GROUP",
+        "name": "The.Vastness.S06E01.2160p.BluRay.x265-FLUX",
         "state": "downloading",
-        "progress": 0.42,
-        "dlspeed": 1_887_437,
+        "progress": 0.38,
+        "dlspeed": 2_621_440,
         "upspeed": 0,
-        "eta": 9000,
+        "eta": 11400,
         "size": 8_589_934_592,
-        "completed": 3_607_728_742,
+        "completed": 3_264_175_104,
     },
     {
         "hash": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
-        "name": "Severance.S02E05.2160p.WEB-DL.x265-GROUP",
+        "name": "Detachment.S02E05.2160p.WEB-DL.x265-FLUX",
         "state": "downloading",
-        "progress": 0.71,
-        "dlspeed": 1_468_006,
+        "progress": 0.67,
+        "dlspeed": 1_887_437,
         "upspeed": 0,
-        "eta": 2700,
+        "eta": 3300,
         "size": 5_368_709_120,
-        "completed": 3_811_783_475,
+        "completed": 3_597_034_611,
+    },
+    {
+        "hash": "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+        "name": "Iron.Citadel.2024.2160p.BluRay.REMUX-FLUX",
+        "state": "downloading",
+        "progress": 0.14,
+        "dlspeed": 3_040_870,
+        "upspeed": 0,
+        "eta": 28800,
+        "size": 55_834_574_848,
+        "completed": 7_816_840_478,
     },
 ]
 
 QB_SEEDING = [
     {
-        "hash": "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-        "name": "ubuntu-24.04.1-desktop-amd64.iso",
+        "hash": "d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
+        "name": "archlinux-2025.03.01-x86_64.iso",
         "state": "uploading",
         "progress": 1.0,
         "dlspeed": 0,
         "upspeed": 524_288,
         "eta": -1,
-        "size": 6_114_762_752,
-        "completed": 6_114_762_752,
+        "size": 1_153_433_600,
+        "completed": 1_153_433_600,
+    },
+    {
+        "hash": "e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6",
+        "name": "debian-12.9.0-amd64-netinst.iso",
+        "state": "uploading",
+        "progress": 1.0,
+        "dlspeed": 0,
+        "upspeed": 262_144,
+        "eta": -1,
+        "size": 661_651_456,
+        "completed": 661_651_456,
     },
 ]
 
 SAB_QUEUE = {
     "queue": {
-        "speed": "8704.0 K",
-        "kbpersec": "8704.0",
-        "mbleft": "4721.3",
-        "mb": "13107.2",
-        "noofslots": 1,
+        "speed": "9420.0 K",
+        "kbpersec": "9420.0",
+        "mbleft": "8540.2",
+        "mb": "24576.0",
+        "noofslots": 2,
         "slots": [
             {
                 "nzo_id": "SABnzbd_nzo_demo001",
-                "filename": "Blade Runner 2049 (2017) REMUX 2160p",
+                "filename": "Neon Requiem (2025) REMUX 2160p HDR",
                 "status": "Downloading",
-                "percentage": "64",
-                "mb": "13107.2",
-                "mbleft": "4721.3",
-                "timeleft": "1:12:00",
-                "eta": "Tue 13:45",
+                "percentage": "71",
+                "mb": "14336.0",
+                "mbleft": "4157.4",
+                "timeleft": "0:29:00",
                 "cat": "movies",
                 "priority": "Normal",
-            }
+            },
+            {
+                "nzo_id": "SABnzbd_nzo_demo002",
+                "filename": "Galactic Wanderer (2024) BluRay 2160p DV",
+                "status": "Downloading",
+                "percentage": "23",
+                "mb": "10240.0",
+                "mbleft": "7882.8",
+                "timeleft": "3:42:00",
+                "cat": "movies",
+                "priority": "Normal",
+            },
         ],
     }
 }
@@ -92,91 +124,174 @@ SAB_QUEUE = {
 RADARR_QUEUE = {
     "page": 1,
     "pageSize": 20,
-    "totalRecords": 1,
+    "totalRecords": 3,
     "records": [
         {
             "id": 101,
-            "movieId": 42,
-            "title": "Dune.Part.Two.2024.2160p.BluRay.x265-GROUP",
+            "movieId": 11,
+            "title": "Iron.Citadel.2024.2160p.BluRay.REMUX-FLUX",
             "status": "downloading",
             "trackedDownloadStatus": "ok",
             "trackedDownloadState": "downloading",
             "size": 55_834_574_848,
-            "sizeleft": 23_448_961_638,
-            "timeleft": "01:20:00",
-            "movie": {
-                "id": 42,
-                "title": "Dune: Part Two",
-                "year": 2024,
-                "tmdbId": 693134,
-                "imdbId": "tt15239678",
-            },
-        }
+            "sizeleft": 48_018_454_938,
+            "timeleft": "08:00:00",
+            "movie": {"id": 11, "title": "Iron Citadel", "year": 2024},
+        },
+        {
+            "id": 102,
+            "movieId": 12,
+            "title": "Neon.Requiem.2025.2160p.REMUX-FLUX",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "downloading",
+            "size": 48_318_382_080,
+            "sizeleft": 14_012_330_803,
+            "timeleft": "00:29:00",
+            "movie": {"id": 12, "title": "Neon Requiem", "year": 2025},
+        },
+        {
+            "id": 103,
+            "movieId": 13,
+            "title": "The.Last.Horizon.2023.2160p.BluRay.x265-FLUX",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "importPending",
+            "size": 12_884_901_888,
+            "sizeleft": 0,
+            "timeleft": "",
+            "movie": {"id": 13, "title": "The Last Horizon", "year": 2023},
+        },
     ],
 }
 
 SONARR_QUEUE = {
     "page": 1,
     "pageSize": 20,
-    "totalRecords": 1,
+    "totalRecords": 4,
     "records": [
         {
             "id": 201,
-            "seriesId": 7,
-            "episodeId": 307,
-            "title": "Severance.S02E05.2160p.WEB-DL.x265-GROUP",
+            "seriesId": 1,
+            "episodeId": 101,
+            "title": "The.Vastness.S06E01.2160p.BluRay.x265-FLUX",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "downloading",
+            "size": 8_589_934_592,
+            "sizeleft": 5_325_754_446,
+            "timeleft": "03:10:00",
+            "series": {"id": 1, "title": "The Vastness", "year": 2015},
+            "episode": {
+                "id": 101, "seriesId": 1,
+                "seasonNumber": 6, "episodeNumber": 1,
+                "title": "Into the Deep",
+            },
+        },
+        {
+            "id": 202,
+            "seriesId": 2,
+            "episodeId": 207,
+            "title": "Detachment.S02E05.2160p.WEB-DL.x265-FLUX",
             "status": "downloading",
             "trackedDownloadStatus": "ok",
             "trackedDownloadState": "downloading",
             "size": 5_368_709_120,
-            "sizeleft": 1_557_924_045,
-            "timeleft": "00:45:00",
-            "series": {
-                "id": 7,
-                "title": "Severance",
-                "year": 2022,
-                "tvdbId": 381584,
-            },
+            "sizeleft": 1_771_674_009,
+            "timeleft": "00:55:00",
+            "series": {"id": 2, "title": "Detachment", "year": 2022},
             "episode": {
-                "id": 307,
-                "seriesId": 7,
-                "seasonNumber": 2,
-                "episodeNumber": 5,
-                "title": "Trojan's Horse",
-                "airDate": "2025-02-28",
+                "id": 207, "seriesId": 2,
+                "seasonNumber": 2, "episodeNumber": 5,
+                "title": "The Wooden Horse",
             },
-        }
+        },
+        {
+            "id": 203,
+            "seriesId": 3,
+            "episodeId": 305,
+            "title": "North.Park.S05E01.2160p.BluRay.x265-FLUX",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "downloading",
+            "size": 3_221_225_472,
+            "sizeleft": 1_996_158_791,
+            "timeleft": "01:20:00",
+            "series": {"id": 3, "title": "North Park", "year": 1997},
+            "episode": {
+                "id": 305, "seriesId": 3,
+                "seasonNumber": 5, "episodeNumber": 1,
+                "title": "It Melts the Snow",
+            },
+        },
+        {
+            "id": 204,
+            "seriesId": 4,
+            "episodeId": 410,
+            "title": "Breaking.Good.S04E10.2160p.WEB-DL.x265-FLUX",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "importPending",
+            "size": 4_294_967_296,
+            "sizeleft": 0,
+            "timeleft": "",
+            "series": {"id": 4, "title": "Breaking Good", "year": 2008},
+            "episode": {
+                "id": 410, "seriesId": 4,
+                "seasonNumber": 4, "episodeNumber": 10,
+                "title": "Azul",
+            },
+        },
     ],
 }
 
 LIDARR_QUEUE = {
     "page": 1,
     "pageSize": 20,
-    "totalRecords": 1,
+    "totalRecords": 3,
     "records": [
         {
             "id": 301,
-            "artistId": 9,
-            "albumId": 15,
-            "title": "Massive.Attack-Mezzanine-FLAC-1998",
+            "artistId": 1,
+            "albumId": 11,
+            "title": "Colossal.Attack-Trapezoid-FLAC-1998",
             "status": "downloading",
             "trackedDownloadStatus": "ok",
             "trackedDownloadState": "downloading",
             "size": 429_496_729,
-            "sizeleft": 278_922_374,
-            "timeleft": "00:18:00",
-            "artist": {
-                "id": 9,
-                "artistName": "Massive Attack",
-                "foreignArtistId": "6d7a7b1e-5b1c-4b1c-8b1c-4b1c8b1c4b1c",
-            },
-            "album": {
-                "id": 15,
-                "title": "Mezzanine",
-                "releaseDate": "1998-04-20",
-                "foreignAlbumId": "abc123",
-            },
-        }
+            "sizeleft": 214_748_364,
+            "timeleft": "00:12:00",
+            "artist": {"id": 1, "artistName": "Colossal Attack"},
+            "album": {"id": 11, "title": "Trapezoid", "releaseDate": "1998-04-20"},
+        },
+        {
+            "id": 302,
+            "artistId": 2,
+            "albumId": 21,
+            "title": "Crimson.Zeppelin-Houses.of.the.Sacred-FLAC-1973",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "downloading",
+            "size": 644_245_094,
+            "sizeleft": 38_654_705,
+            "timeleft": "00:03:00",
+            "artist": {"id": 2, "artistName": "Crimson Zeppelin"},
+            "album": {"id": 21, "title": "Houses of the Sacred", "releaseDate": "1973-05-28"},
+        },
+        {
+            "id": 303,
+            "artistId": 3,
+            "albumId": 31,
+            "title": "The.Mend-Cured-FLAC-1989",
+            "status": "downloading",
+            "trackedDownloadStatus": "ok",
+            "trackedDownloadState": "importPending",
+            "size": 386_547_056,
+            "sizeleft": 0,
+            "timeleft": "",
+            "artist": {"id": 3, "artistName": "The Mend"},
+            "album": {"id": 31, "title": "Cured", "releaseDate": "1989-05-01"},
+        },
     ],
 }
 
