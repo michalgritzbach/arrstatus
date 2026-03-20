@@ -1,12 +1,8 @@
-<svg width="240" height="240" viewBox="32 52 136 136" xmlns="http://www.w3.org/2000/svg">
-  <rect x="32" y="52" width="136" height="136" fill="#2E5F5D"/>
-
-  <!-- Frame -->
-  <rect x="32" y="56" width="136" height="128"
-        fill="none" stroke="#E6E6E6" stroke-width="4"/>
+<svg width="240" height="240" viewBox="64 82 80 80" xmlns="http://www.w3.org/2000/svg">
+  <rect x="64" y="82" width="80" height="80" fill="#2E5F5D"/>
 
   <!-- Icon -->
-  <g stroke="#E6E6E6" stroke-width="4" fill="none" stroke-linecap="square">
+  <g stroke="#E6E6E6" stroke-width="6" fill="none" stroke-linecap="square">
     <line x1="72" y1="88" x2="88" y2="88"/>
     <line x1="96" y1="88" x2="112" y2="88"/>
     <line x1="120" y1="88" x2="136" y2="88"/>
