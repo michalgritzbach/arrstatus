@@ -23,3 +23,5 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+waybar/__pycache__/
+__pycache__/
