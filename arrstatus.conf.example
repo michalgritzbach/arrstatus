@@ -1,0 +1,40 @@
+# arrstatus configuration
+# Copy to ~/.config/arrstatus/arrstatus.conf and edit as needed.
+# The app and waybar widget both read this file.
+# Changes are picked up automatically (no restart required).
+
+[general]
+# Polling interval in seconds (macOS app only; waybar uses its own interval)
+poll_interval = 10
+
+[qbittorrent]
+enabled = false
+url = http://localhost:8080
+# webui_url is optional; falls back to url if omitted
+webui_url =
+username = admin
+password = adminpassword
+
+[sabnzbd]
+enabled = false
+url = http://localhost:8080
+webui_url =
+api_key = your_sabnzbd_api_key
+
+[radarr]
+enabled = false
+url = http://localhost:7878
+webui_url =
+api_key = your_radarr_api_key
+
+[sonarr]
+enabled = false
+url = http://localhost:8989
+webui_url =
+api_key = your_sonarr_api_key
+
+[lidarr]
+enabled = false
+url = http://localhost:8686
+webui_url =
+api_key = your_lidarr_api_key
