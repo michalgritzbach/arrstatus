@@ -10,16 +10,13 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run Tests
+  swift-test:
+    name: Swift Tests
     runs-on: macos-15
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
     - name: Show Xcode version
       run: xcodebuild -version
@@ -36,5 +33,26 @@ jobs:
 
     - name: Test Summary
       if: always()
-      run: |
-        echo "✅ Unit tests completed"
+      run: echo "✅ Swift unit tests completed"
+
+  python:
+    name: Python lint and tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install ruff
+      run: pip install ruff
+
+    - name: Lint
+      run: ruff check waybar/arrstatus.py waybar/test_arrstatus.py
+
+    - name: Run tests
+      run: python3 waybar/test_arrstatus.py -v
