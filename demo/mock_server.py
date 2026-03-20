@@ -289,11 +289,11 @@ LIDARR_ROUTES = {
 # ── Server startup ─────────────────────────────────────────────────────────────
 
 SERVICES = [
-    ("qBittorrent", 8080, QB_ROUTES),
-    ("SABnzbd",     8081, SAB_ROUTES),
-    ("Radarr",      7878, RADARR_ROUTES),
-    ("Sonarr",      8989, SONARR_ROUTES),
-    ("Lidarr",      8686, LIDARR_ROUTES),
+    ("qBittorrent", 19080, QB_ROUTES),
+    ("SABnzbd",     19081, SAB_ROUTES),
+    ("Radarr",      19878, RADARR_ROUTES),
+    ("Sonarr",      19989, SONARR_ROUTES),
+    ("Lidarr",      19686, LIDARR_ROUTES),
 ]
 
 
