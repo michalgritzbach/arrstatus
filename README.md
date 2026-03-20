@@ -1,4 +1,6 @@
-# Arrstatus
+<p align="center">
+  <img src="assets/logo.png" alt="Arrstatus" width="360">
+</p>
 
 Monitors download clients (qBittorrent, SABnzbd) and *arr services (Radarr, Sonarr, Lidarr). Two frontends, one config file:
 
