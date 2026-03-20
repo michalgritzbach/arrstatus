@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$SCRIPT_DIR/.."
 
 if ! command -v rsvg-convert &>/dev/null; then
     echo "rsvg-convert not found. Install librsvg:" >&2
@@ -13,8 +12,8 @@ if ! command -v rsvg-convert &>/dev/null; then
 fi
 
 echo "Exporting logo..."
-rsvg-convert -w 720  -h 240  "$ROOT/logo.svg" -o "$SCRIPT_DIR/logo.png"
-rsvg-convert -w 1440 -h 480  "$ROOT/logo.svg" -o "$SCRIPT_DIR/logo@2x.png"
+rsvg-convert -w 720  -h 240  "$SCRIPT_DIR/logo.svg" -o "$SCRIPT_DIR/logo.png"
+rsvg-convert -w 1440 -h 480  "$SCRIPT_DIR/logo.svg" -o "$SCRIPT_DIR/logo@2x.png"
 
 echo "Exporting icon..."
 for size in 16 32 64 128 256 512; do
