@@ -297,9 +297,13 @@ SERVICES = [
 ]
 
 
+class ReusableHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
+
 def start_server(name, port, routes):
     handler = make_handler(name, routes)
-    server = HTTPServer(("127.0.0.1", port), handler)
+    server = ReusableHTTPServer(("127.0.0.1", port), handler)
     print(f"  {name:12} → http://127.0.0.1:{port}")
     server.serve_forever()
 
