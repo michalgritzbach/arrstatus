@@ -23,7 +23,6 @@ Waybar module config example:
 import configparser
 import http.cookiejar
 import json
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -503,8 +502,14 @@ def build_tooltip_qbittorrent(result):
     up_count = len(result["uploading"])
     return [
         section_header("qBittorrent"),
-        item_line(f"↓ {format_speed(dl)}", f"{dl_count} {'torrent' if dl_count == 1 else 'torrents'}"),
-        item_line(f"↑ {format_speed(up)}", f"{up_count} {'torrent' if up_count == 1 else 'torrents'}"),
+        item_line(
+            f"↓ {format_speed(dl)}",
+            f"{dl_count} {'torrent' if dl_count == 1 else 'torrents'}",
+        ),
+        item_line(
+            f"↑ {format_speed(up)}",
+            f"{up_count} {'torrent' if up_count == 1 else 'torrents'}",
+        ),
     ]
 
 
