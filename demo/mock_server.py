@@ -232,7 +232,7 @@ def make_handler(service_name, routes):
 
 
 def qb_login(handler):
-    handler.read(int(handler.headers.get("Content-Length", 0)))
+    handler.rfile.read(int(handler.headers.get("Content-Length", 0)))
     handler.send_text("Ok.")
 
 
