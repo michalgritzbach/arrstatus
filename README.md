@@ -119,14 +119,6 @@ Bar text: `↓ 5.2 MB/s  ≡ 3` (speed + active count).
 
 Tooltip mirrors the macOS dropdown — sections separated by horizontal rules, service names bold, status text dimmed.
 
-## Architecture
-
-- `Arrstatus/Services/SettingsManager.swift` — reads and watches the INI config file
-- `Arrstatus/Services/StatusAggregator.swift` — polls all enabled services in parallel
-- `Arrstatus/Services/[DownloadClients|ArrServices]/` — one client per service
-- `Arrstatus/Models/` — Codable API response models with display logic
-- `waybar/arrstatus.py` — standalone Python 3 script, no external dependencies
-
 ## License
 
 Open Community License (OCL) v1 — free for non-commercial use, internal commercial use allowed, resale/commercialization requires a separate license. See [LICENSE](LICENSE).
