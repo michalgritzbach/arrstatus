@@ -2,40 +2,31 @@
 //  MenuBarContentView.swift
 //  Arrstatus
 //
-//  Created by Michal Gritzbach on 31.12.2025.
-//
 
 import SwiftUI
 
 struct MenuBarContentView: View {
     @Environment(StatusAggregator.self) private var aggregator
-    @Environment(\.openSettings) private var openSettings
     @State private var settingsManager = SettingsManager.shared
 
     var body: some View {
         if !settingsManager.hasAnyServiceConfigured {
-            // Empty state - no services configured
             VStack(spacing: 12) {
-                Image(systemName: "gearshape")
+                Image(systemName: "doc.text")
                     .font(.system(size: 36))
                     .foregroundStyle(.secondary)
 
                 Text("No Services Configured")
                     .font(.headline)
 
-                Text("Configure download clients and media services in Preferences")
+                Text("Edit ~/.config/arrstatus/arrstatus.conf to configure services")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Button("Open Preferences") {
-                    openSettings()
-                }
-                .buttonStyle(.borderedProminent)
             }
             .padding()
-            .frame(width: 280)
+            .frame(width: 300)
 
             Divider()
 
@@ -44,20 +35,15 @@ struct MenuBarContentView: View {
             }
             .keyboardShortcut("q")
         } else {
-            // Normal content with configured services
+            let settings = settingsManager.settings
 
-            // Download Clients Section
+            // qBittorrent
             if let qb = aggregator.status.qbittorrent {
                 let downloadingCount = qb.activeTorrents.filter { $0.dlspeed > 0 }.count
                 let uploadingCount = qb.activeTorrents.filter { $0.upspeed > 0 }.count
 
                 Section("qBittorrent") {
-                    Button {
-                        let url = settingsManager.settings.qbittorrent.webUIURL.isEmpty
-                            ? settingsManager.settings.qbittorrent.baseURL
-                            : settingsManager.settings.qbittorrent.webUIURL
-                        openURL(url)
-                    } label: {
+                    Button { openURL(settings.qbittorrent.effectiveWebUIURL) } label: {
                         Image(systemName: "arrow.down.circle.fill")
                             .symbolRenderingMode(.palette)
                             .foregroundStyle(Color.green, Color.green.opacity(0.3))
@@ -65,12 +51,7 @@ struct MenuBarContentView: View {
                         Text("\(downloadingCount) \(downloadingCount == 1 ? "torrent" : "torrents")")
                             .foregroundStyle(.secondary)
                     }
-                    Button {
-                        let url = settingsManager.settings.qbittorrent.webUIURL.isEmpty
-                            ? settingsManager.settings.qbittorrent.baseURL
-                            : settingsManager.settings.qbittorrent.webUIURL
-                        openURL(url)
-                    } label: {
+                    Button { openURL(settings.qbittorrent.effectiveWebUIURL) } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .symbolRenderingMode(.palette)
                             .foregroundStyle(Color.blue, Color.blue.opacity(0.3))
@@ -81,16 +62,12 @@ struct MenuBarContentView: View {
                 }
             }
 
+            // SABnzbd
             if let sab = aggregator.status.sabnzbd {
                 let downloadingCount = sab.queue.slots.filter { $0.status.lowercased() == "downloading" }.count
 
                 Section("SABnzbd") {
-                    Button {
-                        let url = settingsManager.settings.sabnzbd.webUIURL.isEmpty
-                            ? settingsManager.settings.sabnzbd.baseURL
-                            : settingsManager.settings.sabnzbd.webUIURL
-                        openURL(url)
-                    } label: {
+                    Button { openURL(settings.sabnzbd.effectiveWebUIURL) } label: {
                         Image(systemName: "arrow.down.circle.fill")
                             .symbolRenderingMode(.palette)
                             .foregroundStyle(Color.green, Color.green.opacity(0.3))
@@ -101,55 +78,62 @@ struct MenuBarContentView: View {
                 }
             }
 
-            // Only show *arr sections if enabled
-            if settingsManager.settings.radarr.isEnabled || settingsManager.settings.sonarr.isEnabled {
+            let hasArrServices = settings.radarr.isEnabled || settings.sonarr.isEnabled ||
+                                 settings.lidarr.isEnabled
+            if hasArrServices {
                 Divider()
             }
 
-            // Radarr Section
-            if settingsManager.settings.radarr.isEnabled {
+            // Radarr
+            if settings.radarr.isEnabled {
                 Section("Radarr") {
                     if aggregator.status.radarr.isEmpty {
-                        Text("No active items")
-                            .foregroundStyle(.secondary)
+                        Text("No active items").foregroundStyle(.secondary)
                     } else {
                         ForEach(aggregator.status.radarr) { item in
                             Button {
-                                let baseURL = settingsManager.settings.radarr.webUIURL.isEmpty
-                                    ? settingsManager.settings.radarr.baseURL
-                                    : settingsManager.settings.radarr.webUIURL
-                                openURL("\(baseURL)/movie/\(item.movie?.tmdbId ?? item.movieId)")
+                                openURL("\(settings.radarr.effectiveWebUIURL)/movie/\(item.movie?.tmdbId ?? item.movieId)")
                             } label: {
                                 Text(item.displayTitle)
-                                Text(item.displayStatus)
-                                    .foregroundStyle(.secondary)
+                                Text(item.displayStatus).foregroundStyle(.secondary)
                             }
                         }
                     }
                 }
             }
 
-            // Sonarr Section
-            if settingsManager.settings.sonarr.isEnabled {
-                if settingsManager.settings.radarr.isEnabled {
-                    Divider()
-                }
-
+            // Sonarr
+            if settings.sonarr.isEnabled {
+                if settings.radarr.isEnabled { Divider() }
                 Section("Sonarr") {
                     if aggregator.status.sonarr.isEmpty {
-                        Text("No active items")
-                            .foregroundStyle(.secondary)
+                        Text("No active items").foregroundStyle(.secondary)
                     } else {
                         ForEach(aggregator.status.sonarr) { item in
                             Button {
-                                let baseURL = settingsManager.settings.sonarr.webUIURL.isEmpty
-                                    ? settingsManager.settings.sonarr.baseURL
-                                    : settingsManager.settings.sonarr.webUIURL
-                                openURL("\(baseURL)/series/\(item.series?.id ?? item.seriesId)")
+                                openURL("\(settings.sonarr.effectiveWebUIURL)/series/\(item.series?.id ?? item.seriesId)")
                             } label: {
                                 Text(item.displayTitle)
-                                Text(item.displayStatus)
-                                    .foregroundStyle(.secondary)
+                                Text(item.displayStatus).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Lidarr
+            if settings.lidarr.isEnabled {
+                if settings.radarr.isEnabled || settings.sonarr.isEnabled { Divider() }
+                Section("Lidarr") {
+                    if aggregator.status.lidarr.isEmpty {
+                        Text("No active items").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(aggregator.status.lidarr) { item in
+                            Button {
+                                openURL("\(settings.lidarr.effectiveWebUIURL)/artist/\(item.artistId)")
+                            } label: {
+                                Text(item.displayTitle)
+                                Text(item.displayStatus).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -157,11 +141,6 @@ struct MenuBarContentView: View {
             }
 
             Divider()
-
-            Button("Preferences...") {
-                openSettings()
-            }
-            .keyboardShortcut(",", modifiers: .command)
 
             Button("Quit") {
                 NSApplication.shared.terminate(nil)

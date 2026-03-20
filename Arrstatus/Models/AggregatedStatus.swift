@@ -2,8 +2,6 @@
 //  AggregatedStatus.swift
 //  Arrstatus
 //
-//  Created by Michal Gritzbach on 31.12.2025.
-//
 
 import Foundation
 
@@ -17,6 +15,7 @@ struct AggregatedStatus {
     var sabnzbd: SABClientStatus?
     var radarr: [RadarrQueueItem] = []
     var sonarr: [SonarrQueueItem] = []
+    var lidarr: [LidarrQueueItem] = []
 
     var lastUpdated: Date = .distantPast
     var errors: [String: Error] = [:]
@@ -25,17 +24,14 @@ struct AggregatedStatus {
         qbStatus: Result<QBClientStatus, Error>,
         sabStatus: Result<SABClientStatus, Error>,
         radarrItems: Result<[RadarrQueueItem], Error>,
-        sonarrItems: Result<[SonarrQueueItem], Error>
+        sonarrItems: Result<[SonarrQueueItem], Error>,
+        lidarrItems: Result<[LidarrQueueItem], Error>
     ) {
-        // Clear previous errors
         errors.removeAll()
-
-        // Reset counters
         totalActiveDownloads = 0
         totalDownloadSpeed = 0
         totalUploadSpeed = 0
 
-        // Process qBittorrent
         switch qbStatus {
         case .success(let status):
             qbittorrent = status
@@ -47,7 +43,6 @@ struct AggregatedStatus {
             qbittorrent = nil
         }
 
-        // Process SABnzbd
         switch sabStatus {
         case .success(let status):
             sabnzbd = status
@@ -58,7 +53,6 @@ struct AggregatedStatus {
             sabnzbd = nil
         }
 
-        // Process Radarr
         switch radarrItems {
         case .success(let items):
             radarr = items.filter { $0.isActive }
@@ -68,7 +62,6 @@ struct AggregatedStatus {
             radarr = []
         }
 
-        // Process Sonarr
         switch sonarrItems {
         case .success(let items):
             sonarr = items.filter { $0.isActive }
@@ -76,6 +69,15 @@ struct AggregatedStatus {
         case .failure(let error):
             errors["sonarr"] = error
             sonarr = []
+        }
+
+        switch lidarrItems {
+        case .success(let items):
+            lidarr = items.filter { $0.isActive }
+            totalActiveDownloads += lidarr.count
+        case .failure(let error):
+            errors["lidarr"] = error
+            lidarr = []
         }
 
         lastUpdated = Date()

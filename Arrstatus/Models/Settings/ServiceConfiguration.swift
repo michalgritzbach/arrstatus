@@ -2,8 +2,6 @@
 //  ServiceConfiguration.swift
 //  Arrstatus
 //
-//  Created by Michal Gritzbach on 31.12.2025.
-//
 
 import Foundation
 
@@ -13,11 +11,17 @@ struct ServiceConfiguration: Codable, Equatable {
     var baseURL: String
     var webUIURL: String
     var isEnabled: Bool
+    var apiKey: String
 
-    init(baseURL: String = "", webUIURL: String = "", isEnabled: Bool = false) {
+    init(baseURL: String = "", webUIURL: String = "", isEnabled: Bool = false, apiKey: String = "") {
         self.baseURL = baseURL
         self.webUIURL = webUIURL
         self.isEnabled = isEnabled
+        self.apiKey = apiKey
+    }
+
+    var effectiveWebUIURL: String {
+        webUIURL.isEmpty ? baseURL : webUIURL
     }
 }
 
@@ -27,13 +31,19 @@ struct QBittorrentConfiguration: Codable, Equatable {
     var baseURL: String
     var webUIURL: String
     var username: String
+    var password: String
     var isEnabled: Bool
 
-    init(baseURL: String = "", webUIURL: String = "", username: String = "", isEnabled: Bool = false) {
+    init(baseURL: String = "", webUIURL: String = "", username: String = "", password: String = "", isEnabled: Bool = false) {
         self.baseURL = baseURL
         self.webUIURL = webUIURL
         self.username = username
+        self.password = password
         self.isEnabled = isEnabled
+    }
+
+    var effectiveWebUIURL: String {
+        webUIURL.isEmpty ? baseURL : webUIURL
     }
 }
 
@@ -44,6 +54,7 @@ struct AppSettings: Codable, Equatable {
     var sabnzbd: ServiceConfiguration
     var radarr: ServiceConfiguration
     var sonarr: ServiceConfiguration
+    var lidarr: ServiceConfiguration
     var pollingInterval: TimeInterval
 
     static var `default`: AppSettings {
@@ -52,6 +63,7 @@ struct AppSettings: Codable, Equatable {
             sabnzbd: ServiceConfiguration(),
             radarr: ServiceConfiguration(),
             sonarr: ServiceConfiguration(),
+            lidarr: ServiceConfiguration(),
             pollingInterval: 5.0
         )
     }
