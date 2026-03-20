@@ -17,6 +17,7 @@ struct SonarrSeries: Codable {
 struct SonarrEpisode: Codable {
     let seasonNumber: Int?
     let episodeNumber: Int?
+    let title: String?
 }
 
 // MARK: - Queue Item
@@ -35,11 +36,15 @@ struct SonarrQueueItem: Codable, Identifiable {
     let episode: SonarrEpisode?
 
     var displayTitle: String {
-        if let series = series?.title, let episode = episode {
+        if let seriesTitle = series?.title, let episode = episode {
             if let season = episode.seasonNumber, let ep = episode.episodeNumber {
-                return "\(series) S\(String(format: "%02d", season))E\(String(format: "%02d", ep))"
+                var label = "\(seriesTitle)  S\(String(format: "%02d", season))E\(String(format: "%02d", ep))"
+                if let epTitle = episode.title, !epTitle.isEmpty {
+                    label += "  \(epTitle)"
+                }
+                return label
             }
-            return series
+            return seriesTitle
         }
         return title
     }
