@@ -112,7 +112,7 @@ class SettingsManager {
         print("📝 Created default config at \(url.path)")
     }
 
-    private static func parseINI(_ content: String) -> AppSettings {
+    static func parseINI(_ content: String) -> AppSettings {
         var sections: [String: [String: String]] = [:]
         var current = ""
 

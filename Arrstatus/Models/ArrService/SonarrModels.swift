@@ -17,7 +17,7 @@ struct SonarrSeries: Codable {
 struct SonarrEpisode: Codable {
     let seasonNumber: Int?
     let episodeNumber: Int?
-    let title: String?
+    let title: String? = nil
 }
 
 // MARK: - Queue Item

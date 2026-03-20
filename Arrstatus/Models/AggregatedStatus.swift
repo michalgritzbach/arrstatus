@@ -25,7 +25,7 @@ struct AggregatedStatus {
         sabStatus: Result<SABClientStatus, Error>,
         radarrItems: Result<[RadarrQueueItem], Error>,
         sonarrItems: Result<[SonarrQueueItem], Error>,
-        lidarrItems: Result<[LidarrQueueItem], Error>
+        lidarrItems: Result<[LidarrQueueItem], Error> = .success([])
     ) {
         errors.removeAll()
         totalActiveDownloads = 0

@@ -57,14 +57,21 @@ struct AppSettings: Codable, Equatable {
     var lidarr: ServiceConfiguration
     var pollingInterval: TimeInterval
 
-    static var `default`: AppSettings {
-        AppSettings(
-            qbittorrent: QBittorrentConfiguration(),
-            sabnzbd: ServiceConfiguration(),
-            radarr: ServiceConfiguration(),
-            sonarr: ServiceConfiguration(),
-            lidarr: ServiceConfiguration(),
-            pollingInterval: 5.0
-        )
+    init(
+        qbittorrent: QBittorrentConfiguration = QBittorrentConfiguration(),
+        sabnzbd: ServiceConfiguration = ServiceConfiguration(),
+        radarr: ServiceConfiguration = ServiceConfiguration(),
+        sonarr: ServiceConfiguration = ServiceConfiguration(),
+        lidarr: ServiceConfiguration = ServiceConfiguration(),
+        pollingInterval: TimeInterval = 5.0
+    ) {
+        self.qbittorrent = qbittorrent
+        self.sabnzbd = sabnzbd
+        self.radarr = radarr
+        self.sonarr = sonarr
+        self.lidarr = lidarr
+        self.pollingInterval = pollingInterval
     }
+
+    static var `default`: AppSettings { AppSettings() }
 }

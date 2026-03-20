@@ -17,7 +17,7 @@ struct LidarrArtist: Codable {
 struct LidarrAlbum: Codable {
     let id: Int
     let title: String
-    let releaseDate: String?
+    let releaseDate: String? = nil
 }
 
 // MARK: - Queue Item
