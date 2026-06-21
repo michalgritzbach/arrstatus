@@ -243,7 +243,8 @@ def qb_torrent_status(t):
 # GET /api?mode=queue&output=json&apikey=…
 #   {
 #     "queue": {
-#       "speed":      str,   # e.g. "1234.5 KB" (already in KB/s, not bytes)
+#       "speed":      str,   # human-readable, e.g. "55.8 M" — unit suffix varies (K/M/G)
+#       "kbpersec":   str,   # numeric KB/s, e.g. "57141.63" — preferred for math
 #       "speedlimit": str,   # configured speed limit
 #       "mbleft":     str,   # MB remaining in queue
 #       "mb":         str,   # total MB in queue
@@ -274,10 +275,9 @@ def fetch_sabnzbd(cfg):
     url = f"{base}/api?mode=queue&output=json&apikey={api_key}"
     data = http_get(url)
     queue = data.get("queue", {})
-    speed_str = queue.get("speed", "0")
     try:
-        speed_kbps = float(speed_str.split()[0]) if speed_str else 0
-    except (ValueError, IndexError):
+        speed_kbps = float(queue.get("kbpersec", "0"))
+    except ValueError:
         speed_kbps = 0
     slots = queue.get("slots", [])
     active = [s for s in slots if s.get("status", "").lower() == "downloading"]

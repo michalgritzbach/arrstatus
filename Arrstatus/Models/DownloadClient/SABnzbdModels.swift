@@ -14,19 +14,18 @@ struct SABQueueResponse: Codable {
 
 // MARK: - Queue
 struct SABQueue: Codable {
-    let speed: String        // e.g., "5.2 M"
-    let speedBytes: String   // e.g., "5242880"
+    let speed: String        // human-readable, e.g. "55.8 M"
+    let speedKBps: String    // numeric KB/s, e.g. "57141.63"
     let slots: [SABSlot]
 
     enum CodingKeys: String, CodingKey {
         case speed
-        case speedBytes = "kbpersec"
+        case speedKBps = "kbpersec"
         case slots
     }
 
     var speedBytesInt: Int64 {
-        // Convert kbpersec to bytes per second
-        if let kbps = Double(speedBytes) {
+        if let kbps = Double(speedKBps) {
             return Int64(kbps * 1024)
         }
         return 0
