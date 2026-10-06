@@ -8,6 +8,7 @@ Arrstatus monitors download clients (qBittorrent, SABnzbd) and *arr services (Ra
 
 - **macOS app** (`Arrstatus/`): macOS 15+ menubar application built with SwiftUI
 - **Waybar widget** (`waybar/arrstatus.py`): Python script for Hyprland/waybar on Linux
+- **Omarchy bar widget** (`omarchy/`): Quickshell plugin (`manifest.json` + `Panel.qml`) — bar button plus popup panel, fed by `waybar/arrstatus.py --json`
 
 ## Build and Development Commands
 
@@ -44,8 +45,11 @@ xcodebuild clean -scheme Arrstatus -project Arrstatus.xcodeproj
 
 ### Waybar widget
 ```bash
-# Test output directly
+# Waybar payload (text / Pango tooltip / class)
 python3 waybar/arrstatus.py
+
+# Structured report consumed by the Omarchy panel
+python3 waybar/arrstatus.py --json
 ```
 
 ## Configuration
@@ -105,8 +109,24 @@ Arrstatus/
 waybar/
 └── arrstatus.py                         # Waybar widget (Python 3, no dependencies)
 
+omarchy/
+├── manifest.json                        # Omarchy plugin manifest (bar-widget)
+└── Panel.qml                            # Bar button + popup panel, built on Omarchy's qs.Ui
+
 arrstatus.conf.example                   # Annotated example config file
 ```
+
+### Python script structure (`waybar/arrstatus.py`)
+
+`gather(cfg)` fetches every enabled service once and returns a list of service
+dicts carrying both the Pango tooltip lines and structured fields (`items`,
+`dlSpeed`, `activeCount`, `error`). `build_waybar()` renders the Waybar payload
+from that list, `build_report()` renders the `--json` report. Adding a service
+means a `collect_<name>` function plus an entry in `SERVICES`/`COLLECTORS`.
+
+Service failures never propagate: `gather` catches `ServiceError` (the service
+answered but refused) and any other exception (prefixed `error:`) and records it
+on that service alone.
 
 ### Testing Framework
 - Uses Swift Testing framework (not XCTest) - note the `import Testing` and `@Test` attribute syntax

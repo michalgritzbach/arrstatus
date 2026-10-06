@@ -20,9 +20,11 @@ Waybar module config example:
     }
 """
 
+import argparse
 import configparser
 import http.cookiejar
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -543,6 +545,33 @@ def build_tooltip_arr(name, items, title_keys):
     return lines
 
 
+def sonarr_title(item):
+    series = item.get("series", {}).get("title", "")
+    ep = item.get("episode", {})
+    s = ep.get("seasonNumber")
+    e = ep.get("episodeNumber")
+    ep_title = ep.get("title", "")
+    if series and s is not None and e is not None:
+        title = f"{series}  S{s:02d}E{e:02d}"
+        if ep_title:
+            title += f"  {ep_title}"
+        return title
+    return arr_display_title(item, ["series.title", "title"])
+
+
+def lidarr_title(item):
+    artist = item.get("artist", {}).get("artistName", "")
+    album = item.get("album", {})
+    album_title = album.get("title", "")
+    year = (album.get("releaseDate") or "")[:4]
+    if artist and album_title:
+        title = f"{artist} – {album_title}"
+        if year:
+            title += f" ({year})"
+        return title
+    return arr_display_title(item, ["artist.artistName", "album.title", "title"])
+
+
 def build_tooltip_sonarr(items):
     lines = []
     if not items:
@@ -552,18 +581,7 @@ def build_tooltip_sonarr(items):
         return lines
     lines.append(section_header("Sonarr"))
     for item in items:
-        series = item.get("series", {}).get("title", "")
-        ep = item.get("episode", {})
-        s = ep.get("seasonNumber")
-        e = ep.get("episodeNumber")
-        ep_title = ep.get("title", "")
-        if series and s is not None and e is not None:
-            title = f"{series}  S{s:02d}E{e:02d}"
-            if ep_title:
-                title += f"  {ep_title}"
-        else:
-            title = arr_display_title(item, ["series.title", "title"])
-        lines.append(item_line(title, arr_display_status(item)))
+        lines.append(item_line(sonarr_title(item), arr_display_status(item)))
     return lines
 
 
@@ -576,168 +594,254 @@ def build_tooltip_lidarr(items):
         return lines
     lines.append(section_header("Lidarr"))
     for item in items:
-        artist = item.get("artist", {}).get("artistName", "")
-        album = item.get("album", {})
-        album_title = album.get("title", "")
-        year = (album.get("releaseDate") or "")[:4]
-        if artist and album_title:
-            title = f"{artist} – {album_title}"
-            if year:
-                title += f" ({year})"
-        else:
-            title = arr_display_title(
-                item, ["artist.artistName", "album.title", "title"]
-            )
-        lines.append(item_line(title, arr_display_status(item)))
+        lines.append(item_line(lidarr_title(item), arr_display_status(item)))
     return lines
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Structured collection ─────────────────────────────────────────────────────
+#
+# One fetch pass feeds both output modes: the Waybar text/tooltip payload and
+# the structured report (`--json`) that richer frontends such as the Omarchy
+# bar panel render themselves.
+
+SERVICES = [
+    ("qbittorrent", "qBittorrent"),
+    ("sabnzbd", "SABnzbd"),
+    ("radarr", "Radarr"),
+    ("sonarr", "Sonarr"),
+    ("lidarr", "Lidarr"),
+]
+
+SEPARATOR = "\n<span alpha='40%'>────────────────────────────────</span>\n"
 
 
-def main():
-    cfg = load_config()
+class ServiceError(Exception):
+    """A service answered, but said no — reported without the 'error:' prefix."""
 
-    total_dl_speed = 0.0
-    total_active = 0
-    tooltip_sections = []
-    has_errors = False
 
-    # qBittorrent
-    if enabled(cfg, "qbittorrent"):
+def percent_of(done, total):
+    try:
+        total = float(total)
+        done = float(done)
+    except (TypeError, ValueError):
+        return None
+    if total <= 0:
+        return None
+    return max(0, min(100, int(done / total * 100)))
+
+
+def arr_percent(item):
+    size = item.get("size")
+    left = item.get("sizeleft")
+    if size is None or left is None:
+        return None
+    try:
+        return percent_of(float(size) - float(left), size)
+    except (TypeError, ValueError):
+        return None
+
+
+def make_item(title, status, percent=None, eta="", detail=""):
+    return {
+        "title": title,
+        "status": status,
+        "percent": percent,
+        "eta": eta,
+        "detail": detail,
+    }
+
+
+def qb_items(result):
+    return [
+        make_item(
+            t.get("name", "Unknown"),
+            "Downloading",
+            percent_of(t.get("progress", 0), 1),
+            format_eta_seconds(t.get("eta", -1)),
+            f"↓ {format_speed(t.get('dlspeed', 0))}",
+        )
+        for t in result["active"]
+    ]
+
+
+def sab_items(result):
+    items = []
+    for slot in result["active"]:
+        raw_pct = str(slot.get("percentage", "")).strip()
+        timeleft = slot.get("timeleft", "")
+        items.append(
+            make_item(
+                slot.get("filename", "Unknown"),
+                slot.get("status") or "Downloading",
+                int(raw_pct) if raw_pct.isdigit() else None,
+                "" if timeleft in ("", "0:00:00") else timeleft,
+            )
+        )
+    return items
+
+
+def arr_state(item):
+    """Bare state label. The Waybar tooltip wants progress folded into the
+    status string; a frontend that draws its own meter wants just the word."""
+    state = (item.get("trackedDownloadState") or "").lower()
+    dl_status = (item.get("trackedDownloadStatus") or "").lower()
+    if state == "downloading":
+        return "Downloading"
+    if state == "importpending":
+        return "Importing"
+    if dl_status == "warning":
+        return "Stalled"
+    return (item.get("status") or "").capitalize()
+
+
+def arr_items(items, title_fn):
+    return [
+        make_item(
+            title_fn(item),
+            arr_state(item),
+            arr_percent(item),
+            format_eta_timestr(item.get("timeleft", "")),
+        )
+        for item in items
+    ]
+
+
+def service_url(cfg, section):
+    return get(cfg, section, "webui_url") or get(cfg, section, "url")
+
+
+def new_service(cfg, section, name):
+    return {
+        "id": section,
+        "name": name,
+        "url": service_url(cfg, section),
+        "error": None,
+        "dlSpeed": 0.0,
+        "upSpeed": 0.0,
+        "activeCount": 0,
+        "summary": "",
+        "items": [],
+        "tooltip": [],
+    }
+
+
+def collect_qbittorrent(cfg, service):
+    result, err = fetch_qbittorrent(cfg)
+    if err:
+        raise ServiceError(err)
+    service["dlSpeed"] = result["dl_speed"]
+    service["upSpeed"] = result["up_speed"]
+    service["activeCount"] = len(result["active"])
+    service["items"] = qb_items(result)
+    service["summary"] = (
+        f"↓ {format_speed(result['dl_speed'])}   ↑ {format_speed(result['up_speed'])}"
+    )
+    service["tooltip"] = build_tooltip_qbittorrent(result)
+
+
+def collect_sabnzbd(cfg, service):
+    result, err = fetch_sabnzbd(cfg)
+    if err:
+        raise ServiceError(err)
+    service["dlSpeed"] = result["dl_speed"]
+    service["activeCount"] = len(result["active"])
+    service["items"] = sab_items(result)
+    service["summary"] = f"↓ {format_speed(result['dl_speed'])}"
+    service["tooltip"] = build_tooltip_sabnzbd(result)
+
+
+def collect_radarr(cfg, service):
+    items, err = fetch_arr_queue(
+        get(cfg, "radarr", "url"), get(cfg, "radarr", "api_key"), "includeMovie=true"
+    )
+    if err:
+        raise ServiceError(err)
+    service["activeCount"] = len(items)
+    service["items"] = arr_items(
+        items, lambda item: arr_display_title(item, ["movie.title", "title"])
+    )
+    service["tooltip"] = build_tooltip_arr("Radarr", items, ["movie.title", "title"])
+
+
+def collect_sonarr(cfg, service):
+    items, err = fetch_arr_queue(
+        get(cfg, "sonarr", "url"),
+        get(cfg, "sonarr", "api_key"),
+        "includeSeries=true&includeEpisode=true",
+    )
+    if err:
+        raise ServiceError(err)
+    service["activeCount"] = len(items)
+    service["items"] = arr_items(items, sonarr_title)
+    service["tooltip"] = build_tooltip_sonarr(items)
+
+
+def collect_lidarr(cfg, service):
+    items, err = fetch_lidarr_queue(
+        get(cfg, "lidarr", "url"), get(cfg, "lidarr", "api_key")
+    )
+    if err:
+        raise ServiceError(err)
+    service["activeCount"] = len(items)
+    service["items"] = arr_items(items, lidarr_title)
+    service["tooltip"] = build_tooltip_lidarr(items)
+
+
+COLLECTORS = {
+    "qbittorrent": collect_qbittorrent,
+    "sabnzbd": collect_sabnzbd,
+    "radarr": collect_radarr,
+    "sonarr": collect_sonarr,
+    "lidarr": collect_lidarr,
+}
+
+
+def gather(cfg):
+    """Fetch every enabled service. One bad service never sinks the others."""
+    services = []
+    for section, name in SERVICES:
+        if not enabled(cfg, section):
+            continue
+        service = new_service(cfg, section, name)
         try:
-            result, err = fetch_qbittorrent(cfg)
-            if err:
-                tooltip_sections.append(
-                    [
-                        section_header("qBittorrent")
-                        + f"   <span color='#f38ba8'>{err}</span>"
-                    ]
-                )
-                has_errors = True
-            else:
-                total_dl_speed += result["dl_speed"]
-                total_active += len(result["active"])
-                tooltip_sections.append(build_tooltip_qbittorrent(result))
+            COLLECTORS[section](cfg, service)
+        except ServiceError as e:
+            service["error"] = str(e)
         except Exception as e:
-            tooltip_sections.append(
-                [
-                    section_header("qBittorrent")
-                    + f"   <span color='#f38ba8'>error: {pango_escape(str(e))}</span>"
-                ]
-            )
-            has_errors = True
+            service["error"] = f"error: {e}"
+        if service["error"]:
+            service["tooltip"] = [
+                section_header(name)
+                + f"   <span color='#f38ba8'>{pango_escape(service['error'])}</span>"
+            ]
+        services.append(service)
+    return services
 
-    # SABnzbd
-    if enabled(cfg, "sabnzbd"):
-        try:
-            result, err = fetch_sabnzbd(cfg)
-            if err:
-                tooltip_sections.append(
-                    [
-                        section_header("SABnzbd")
-                        + f"   <span color='#f38ba8'>{err}</span>"
-                    ]
-                )
-                has_errors = True
-            else:
-                total_dl_speed += result["dl_speed"]
-                total_active += len(result["active"])
-                tooltip_sections.append(build_tooltip_sabnzbd(result))
-        except Exception as e:
-            tooltip_sections.append(
-                [
-                    section_header("SABnzbd")
-                    + f"   <span color='#f38ba8'>error: {pango_escape(str(e))}</span>"
-                ]
-            )
-            has_errors = True
 
-    # Radarr
-    if enabled(cfg, "radarr"):
-        try:
-            items, err = fetch_arr_queue(
-                get(cfg, "radarr", "url"),
-                get(cfg, "radarr", "api_key"),
-                "includeMovie=true",
-            )
-            if err:
-                tooltip_sections.append(
-                    [
-                        section_header("Radarr")
-                        + f"   <span color='#f38ba8'>{err}</span>"
-                    ]
-                )
-                has_errors = True
-            else:
-                total_active += len(items)
-                tooltip_sections.append(
-                    build_tooltip_arr("Radarr", items, ["movie.title", "title"])
-                )
-        except Exception as e:
-            tooltip_sections.append(
-                [
-                    section_header("Radarr")
-                    + f"   <span color='#f38ba8'>error: {pango_escape(str(e))}</span>"
-                ]
-            )
-            has_errors = True
+def build_report(services):
+    """Structured output for frontends that draw their own UI."""
+    return {
+        "schema": 1,
+        "generatedAt": int(time.time()),
+        "totals": {
+            "dlSpeed": sum(s["dlSpeed"] for s in services),
+            "upSpeed": sum(s["upSpeed"] for s in services),
+            "activeCount": sum(s["activeCount"] for s in services),
+            "hasErrors": any(s["error"] for s in services),
+        },
+        "services": [
+            {key: value for key, value in s.items() if key != "tooltip"}
+            for s in services
+        ],
+    }
 
-    # Sonarr
-    if enabled(cfg, "sonarr"):
-        try:
-            items, err = fetch_arr_queue(
-                get(cfg, "sonarr", "url"),
-                get(cfg, "sonarr", "api_key"),
-                "includeSeries=true&includeEpisode=true",
-            )
-            if err:
-                tooltip_sections.append(
-                    [
-                        section_header("Sonarr")
-                        + f"   <span color='#f38ba8'>{err}</span>"
-                    ]
-                )
-                has_errors = True
-            else:
-                total_active += len(items)
-                tooltip_sections.append(build_tooltip_sonarr(items))
-        except Exception as e:
-            tooltip_sections.append(
-                [
-                    section_header("Sonarr")
-                    + f"   <span color='#f38ba8'>error: {pango_escape(str(e))}</span>"
-                ]
-            )
-            has_errors = True
 
-    # Lidarr
-    if enabled(cfg, "lidarr"):
-        try:
-            items, err = fetch_lidarr_queue(
-                get(cfg, "lidarr", "url"), get(cfg, "lidarr", "api_key")
-            )
-            if err:
-                tooltip_sections.append(
-                    [
-                        section_header("Lidarr")
-                        + f"   <span color='#f38ba8'>{err}</span>"
-                    ]
-                )
-                has_errors = True
-            else:
-                total_active += len(items)
-                tooltip_sections.append(build_tooltip_lidarr(items))
-        except Exception as e:
-            tooltip_sections.append(
-                [
-                    section_header("Lidarr")
-                    + f"   <span color='#f38ba8'>error: {pango_escape(str(e))}</span>"
-                ]
-            )
-            has_errors = True
+def build_waybar(services):
+    """Waybar JSON: bar text, Pango tooltip, CSS class."""
+    total_dl_speed = sum(s["dlSpeed"] for s in services)
+    total_active = sum(s["activeCount"] for s in services)
+    has_errors = any(s["error"] for s in services)
 
-    # Build output
     if total_active > 0:
         text = f"↓ {format_speed(total_dl_speed)}  ≡ {total_active}"
         css_class = "downloading"
@@ -748,16 +852,36 @@ def main():
         text = ""
         css_class = "idle"
 
-    sep = "\n<span alpha='40%'>────────────────────────────────</span>\n"
+    sections = [s["tooltip"] for s in services if s["tooltip"]]
     tooltip = (
-        sep.join("\n".join(sec) for sec in tooltip_sections)
-        if tooltip_sections
+        SEPARATOR.join("\n".join(section) for section in sections)
+        if sections
         else "All idle"
     )
+    return {"text": text, "tooltip": tooltip, "class": css_class}
 
-    print(
-        json.dumps({"text": text, "tooltip": tooltip, "class": css_class}), flush=True
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Report download client and *arr activity."
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the structured report instead of Waybar JSON",
+    )
+    args = parser.parse_args()
+
+    cfg = load_config()
+    services = gather(cfg)
+
+    if args.json:
+        print(json.dumps(build_report(services)), flush=True)
+    else:
+        print(json.dumps(build_waybar(services)), flush=True)
 
 
 if __name__ == "__main__":

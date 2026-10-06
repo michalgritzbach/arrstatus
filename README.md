@@ -2,10 +2,11 @@
   <img src="assets/logo.png" alt="Arrstatus" width="360">
 </p>
 
-Monitors download clients (qBittorrent, SABnzbd) and *arr services (Radarr, Sonarr, Lidarr). Two frontends, one config file:
+Monitors download clients (qBittorrent, SABnzbd) and *arr services (Radarr, Sonarr, Lidarr). Three frontends, one config file:
 
 - **macOS menubar app** — native SwiftUI, macOS 15+
 - **Waybar widget** — Python script for Hyprland/Linux
+- **Omarchy bar widget** — Quickshell plugin wrapping the same script
 
 ## Configuration
 
@@ -120,6 +121,79 @@ Add `"custom/arrstatus"` to your `modules-left`, `modules-center`, or `modules-r
 Bar text: `↓ 5.2 MB/s  ≡ 3` (speed + active count).
 
 Tooltip mirrors the macOS dropdown — sections separated by horizontal rules, service names bold, status text dimmed.
+
+The script also has a structured mode for frontends that draw their own UI:
+
+```bash
+waybar/arrstatus.py --json
+```
+
+It prints one report per run — totals, then a per-service block with its speed,
+active count, error (if any) and queue items (title, status, percent, ETA).
+
+## Omarchy Bar Widget
+
+Omarchy 4 replaced Waybar with a Quickshell-based bar. `omarchy/` is a bar-widget
+plugin: the bar carries the headline, and a popup panel carries the detail.
+
+- **Bar** — `↓ 5.2 MB/s  ≡ 3`, or a warning glyph when a service is failing.
+  Nothing downloading and nothing broken means nothing in the bar.
+- **Panel** — a hero line with the totals, then one section per service:
+  its name, its own headline (speed for the download clients, item count for the
+  *arrs, the error when there is one), and a row per queue item with title,
+  percentage, progress meter, status and ETA. Stalled items and errors take the
+  theme's urgent color. Clicking a row or a section header opens that service's
+  web UI.
+
+It runs `waybar/arrstatus.py --json`, which fetches every enabled service in one
+pass and prints a structured report; the panel draws it.
+
+### Setup
+
+Link (or copy) the plugin directory into the Omarchy plugin path, then enable it:
+
+```bash
+ln -sfn "$PWD/omarchy" ~/.config/omarchy/plugins/michal.arrstatus
+omarchy plugin enable michal.arrstatus --section right
+```
+
+The widget finds the script at `../waybar/arrstatus.py` relative to itself, so a
+symlinked checkout needs no further configuration. A standalone install can drop
+`arrstatus.py` next to `Panel.qml` instead.
+
+### Interactions
+
+- Bar icon: left = panel, right = open the first configured web UI, middle = refresh.
+- Panel: `j`/`k` scroll, `r` or Enter refresh, `o` open the first web UI,
+  Tab moves to the neighboring bar panel, Esc closes.
+- IPC: `omarchy-shell michal.arrstatus <open|close|toggle|refresh>`.
+
+### Settings
+
+Per-widget settings live in the `bar.layout` entry in `~/.config/omarchy/shell.json`:
+
+```json
+{ "id": "michal.arrstatus", "interval": 5 }
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `interval` | `5` | Seconds between polls |
+| `command` | — | Script path or shell command to run instead of the bundled script; it is called with `--json` |
+| `fontSize` | bar body size | Bar label size |
+
+Do **not** name a setting `exec` or `source`: the bar treats any layout entry
+carrying those keys as a built-in command/QML module and never loads the plugin.
+
+### Notes
+
+- The panel is built from Omarchy's own `qs.Ui` components (`Panel`,
+  `KeyboardPanel`, `PanelHero`, …), so it inherits the theme, popup placement and
+  keyboard handling — at the cost of depending on those internals.
+- The bar runs one widget instance per monitor, so a two-monitor setup polls twice
+  per interval.
+- Plugin code is only reloaded from a symlinked checkout by `omarchy restart shell`;
+  in-place plugin directories also hot-reload on save.
 
 ## License
 

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "michal.arrstatus",
+  "name": "arrstatus",
+  "version": "2.0.0",
+  "author": "Michal Gritzbach",
+  "license": "OCL-1.0",
+  "description": "qBittorrent / SABnzbd / *arr download activity in the Omarchy bar, with a per-service panel",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "arrstatus",
+    "description": "Total download speed and active count in the bar; a panel with one section per service, progress meters, status and ETA. Hides itself when everything is idle.",
+    "category": "Status",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "interval": 5
+    },
+    "schema": [
+      {
+        "key": "interval",
+        "type": "integer",
+        "label": "Poll interval (seconds)",
+        "min": 1,
+        "max": 600,
+        "step": 1,
+        "defaultValue": 5
+      },
+      {
+        "key": "command",
+        "type": "string",
+        "label": "Script path or shell command",
+        "description": "Overrides the bundled waybar/arrstatus.py. Called with --json and must print the structured report."
+      },
+      {
+        "key": "fontSize",
+        "type": "integer",
+        "label": "Bar label size",
+        "min": 8,
+        "max": 20,
+        "step": 1
+      }
+    ]
+  }
+}
