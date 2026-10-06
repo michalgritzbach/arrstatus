@@ -160,7 +160,9 @@ def http_get(url, headers=None, timeout=10):
 # ── qBittorrent ──────────────────────────────────────────────────────────────
 #
 # POST /api/v2/auth/login  body: username=…&password=…
-#   → "Ok." on success, "Fails." on bad credentials
+#   → "Ok." on success, "Fails." on bad credentials (qBittorrent < 5.2)
+#   → 204 No Content on success, 401 on bad credentials (qBittorrent 5.2+)
+#   Session cookie is "SID" (old) or "QBT_SID_<port>" (5.2+).
 #
 # GET /api/v2/transfer/info
 #   {
@@ -199,10 +201,17 @@ def fetch_qbittorrent(cfg):
 
     login_data = f"username={urllib.parse.quote(user)}&password={urllib.parse.quote(pwd)}".encode()
     login_req = urllib.request.Request(f"{base}/api/v2/auth/login", data=login_data)
-    with opener.open(login_req, timeout=10) as resp:
-        body = resp.read().decode()
-        if body.strip() != "Ok.":
+    # qBittorrent < 5.2 answers 200 "Ok."; 5.2+ answers 204 with an empty body.
+    # Bad credentials are "Fails." (old) or 401 (new).
+    try:
+        with opener.open(login_req, timeout=10) as resp:
+            body = resp.read().decode().strip()
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
             return None, "login failed"
+        raise
+    if body not in ("Ok.", ""):
+        return None, "login failed"
 
     with opener.open(f"{base}/api/v2/transfer/info", timeout=10) as resp:
         info = json.loads(resp.read())

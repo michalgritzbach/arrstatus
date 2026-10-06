@@ -54,7 +54,8 @@ class QBittorrentClient {
             throw QBError.invalidResponse
         }
 
-        guard httpResponse.statusCode == 200 else {
+        // qBittorrent < 5.2 answers 200 "Ok."; 5.2+ answers 204 No Content
+        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 204 else {
             throw QBError.authenticationFailed
         }
 
@@ -87,7 +88,8 @@ class QBittorrentClient {
             throw QBError.invalidResponse
         }
 
-        guard httpResponse.statusCode == 200 else {
+        // qBittorrent < 5.2 answers 200 "Ok."; 5.2+ answers 204 No Content
+        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 204 else {
             throw QBError.authenticationFailed
         }
 
@@ -98,9 +100,10 @@ class QBittorrentClient {
         }
 
         // Verify cookie was stored automatically by URLSession
-        // Check all cookies in storage for the SID cookie
+        // Check all cookies in storage for the session cookie:
+        // "SID" before qBittorrent 5.2, "QBT_SID_<port>" from 5.2 on
         if let allCookies = cookieStorage.cookies,
-           allCookies.contains(where: { $0.name == "SID" }) {
+           allCookies.contains(where: { $0.name == "SID" || $0.name.hasPrefix("QBT_SID_") }) {
             isAuthenticated = true
             print("✅ qBittorrent authenticated successfully, SID cookie received")
         } else {
